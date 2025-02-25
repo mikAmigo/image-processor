@@ -1,17 +1,31 @@
 {
   "name": "image-processor",
   "version": "1.0.0",
+  "description": "A web application for processing images to specific formats and dimensions",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "export": "next export",
+    "deploy": "next build && next export && touch out/.nojekyll && gh-pages -d out -t true"
   },
-  "keywords": [],
+  "keywords": [
+    "image",
+    "processing",
+    "logo",
+    "headshot",
+    "next.js",
+    "react"
+  ],
   "author": "",
-  "license": "ISC",
-  "description": "",
+  "license": "MIT",
   "dependencies": {
     "next": "^15.1.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.1.1"
   }
 }

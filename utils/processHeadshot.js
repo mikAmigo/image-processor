@@ -63,62 +63,84 @@ async function createHeadshot(img, minWidth, minHeight, targetRatio) {
   // Calculate the target aspect ratio (width/height)
   const targetAspect = targetRatio[0] / targetRatio[1];
   
+  // Calculate the current aspect ratio
+  const currentRatio = origWidth / origHeight;
+  
   // Determine the new dimensions that will give us the exact aspect ratio
-  // Start with a width that's a multiple of targetRatio[0] and calculate the corresponding height
-  let baseWidth = targetRatio[0];
-  while (baseWidth < origWidth) {
-    baseWidth += targetRatio[0];
+  let newWidth, newHeight;
+  
+  // Calculate dimensions to achieve the exact target ratio
+  if (currentRatio > targetAspect) {
+    // Image is too wide, add padding to the top and bottom
+    newWidth = origWidth;
+    // Calculate exact height to match the aspect ratio
+    // Use the target ratio directly to ensure precision
+    newHeight = Math.ceil((newWidth * targetRatio[1]) / targetRatio[0]);
+  } else {
+    // Image is too tall, add padding to the left and right
+    newHeight = origHeight;
+    // Calculate exact width to match the aspect ratio
+    // Use the target ratio directly to ensure precision
+    newWidth = Math.ceil((newHeight * targetRatio[0]) / targetRatio[1]);
   }
   
-  // Calculate the corresponding height for this width to get exact ratio
-  const baseHeight = (baseWidth * targetRatio[1]) / targetRatio[0];
-  
-  // Set canvas dimensions
-  canvas.width = baseWidth;
-  canvas.height = baseHeight;
-  
-  // Fill with white background
-  ctx.fillStyle = 'white';
-  ctx.fillRect(0, 0, baseWidth, baseHeight);
-  
-  // Calculate position to center the image
-  const x = Math.floor((baseWidth - origWidth) / 2);
-  const y = Math.floor((baseHeight - origHeight) / 2);
-  
-  // Draw the image
-  ctx.drawImage(img, x, y);
-  
-  // Ensure minimum size requirements
-  if (baseWidth < minWidth || baseHeight < minHeight) {
-    // Create a new canvas for the resized image
-    const resizedCanvas = document.createElement('canvas');
-    const resizedCtx = resizedCanvas.getContext('2d');
-    
+  // Ensure minimum size requirements while maintaining exact aspect ratio
+  if (newWidth < minWidth || newHeight < minHeight) {
     // Calculate scale factors for width and height
-    const widthScale = minWidth / baseWidth;
-    const heightScale = minHeight / baseHeight;
+    const widthScale = minWidth / newWidth;
+    const heightScale = minHeight / newHeight;
     
     // Use the larger scale factor to ensure both minimum dimensions are met
     const scaleFactor = Math.max(widthScale, heightScale);
     
-    // Calculate new dimensions that maintain the exact ratio
-    const scaleWidth = Math.round(baseWidth * scaleFactor);
-    const scaleHeight = Math.round(baseHeight * scaleFactor);
+    // Scale dimensions while maintaining exact aspect ratio
+    if (widthScale > heightScale) {
+      // Width is the limiting factor
+      newWidth = minWidth;
+      // Calculate height based on the exact ratio
+      newHeight = Math.ceil((newWidth * targetRatio[1]) / targetRatio[0]);
+    } else {
+      // Height is the limiting factor
+      newHeight = minHeight;
+      // Calculate width based on the exact ratio
+      newWidth = Math.ceil((newHeight * targetRatio[0]) / targetRatio[1]);
+    }
     
-    // Set canvas dimensions
-    resizedCanvas.width = scaleWidth;
-    resizedCanvas.height = scaleHeight;
+    // Double-check to ensure we meet minimum requirements
+    if (newWidth < minWidth) newWidth = minWidth;
+    if (newHeight < minHeight) newHeight = minHeight;
     
-    // Fill with white background
-    resizedCtx.fillStyle = 'white';
-    resizedCtx.fillRect(0, 0, scaleWidth, scaleHeight);
+    // Final verification of aspect ratio
+    const actualRatio = newWidth / newHeight;
+    const targetAspectRatio = targetRatio[0] / targetRatio[1];
     
-    // Draw the original canvas onto the resized canvas
-    resizedCtx.drawImage(canvas, 0, 0, baseWidth, baseHeight, 0, 0, scaleWidth, scaleHeight);
-    
-    // Return as base64
-    return resizedCanvas.toDataURL('image/png');
+    // If there's still a discrepancy, adjust to ensure exact ratio
+    if (Math.abs(actualRatio - targetAspectRatio) > 0.0001) {
+      // Prioritize the larger dimension to ensure minimum requirements
+      if (newWidth / minWidth > newHeight / minHeight) {
+        // Width has more margin, adjust it
+        newWidth = Math.ceil(newHeight * targetAspectRatio);
+      } else {
+        // Height has more margin, adjust it
+        newHeight = Math.ceil(newWidth / targetAspectRatio);
+      }
+    }
   }
+  
+  // Set canvas dimensions
+  canvas.width = newWidth;
+  canvas.height = newHeight;
+  
+  // Fill with white background
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0, 0, newWidth, newHeight);
+  
+  // Calculate position to center the image exactly
+  const x = Math.floor((newWidth - origWidth) / 2);
+  const y = Math.floor((newHeight - origHeight) / 2);
+  
+  // Draw the image
+  ctx.drawImage(img, x, y);
   
   // Return as base64
   return canvas.toDataURL('image/png');

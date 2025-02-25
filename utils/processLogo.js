@@ -79,46 +79,96 @@ async function createRectangularLogo(img, aspectRatio, minWidth, minHeight, tran
   const origWidth = img.width;
   const origHeight = img.height;
   
+  // For 5:2 aspect ratio, we'll use exact integer math
+  // For 5:2 ratio, width must be a multiple of 5 and height must be a multiple of 2
+  let ratioNumerator = 5;
+  let ratioDenominator = 2;
+  
   // Calculate the current aspect ratio
   const currentRatio = origWidth / origHeight;
   
-  // Determine new dimensions to achieve the target aspect ratio
-  let newWidth, newHeight;
+  // First, determine the base dimensions that will contain the original image
+  let baseWidth, baseHeight;
+  
   if (currentRatio > aspectRatio) {
-    // Image is too wide, add padding to the top and bottom
-    newWidth = origWidth;
-    newHeight = Math.round(origWidth / aspectRatio);
+    // Image is too wide, use original width and calculate height
+    baseWidth = origWidth;
+    baseHeight = Math.ceil(baseWidth / aspectRatio);
   } else {
-    // Image is too tall, add padding to the left and right
-    newHeight = origHeight;
-    newWidth = Math.round(origHeight * aspectRatio);
+    // Image is too tall, use original height and calculate width
+    baseHeight = origHeight;
+    baseWidth = Math.ceil(baseHeight * aspectRatio);
   }
   
-  // Ensure minimum size requirements
-  if (newWidth < minWidth || newHeight < minHeight) {
-    const scaleFactor = Math.max(minWidth / newWidth, minHeight / newHeight);
-    newWidth = Math.round(newWidth * scaleFactor);
-    newHeight = Math.round(newHeight * scaleFactor);
+  // Now ensure dimensions meet minimum requirements
+  if (baseWidth < minWidth || baseHeight < minHeight) {
+    if (baseWidth < minWidth) {
+      baseWidth = minWidth;
+      baseHeight = Math.ceil(baseWidth / aspectRatio);
+    }
+    if (baseHeight < minHeight) {
+      baseHeight = minHeight;
+      baseWidth = Math.ceil(baseHeight * aspectRatio);
+    }
   }
   
-  // Set canvas dimensions
-  canvas.width = newWidth;
-  canvas.height = newHeight;
+  // For 5:2 ratio specifically, ensure width is a multiple of 5 and height is a multiple of 2
+  // This guarantees an exact 5:2 ratio
+  if (aspectRatio === 2.5) {
+    // Round up width to next multiple of 5
+    baseWidth = Math.ceil(baseWidth / 5) * 5;
+    // Calculate exact height as width * 2 / 5
+    baseHeight = (baseWidth * 2) / 5;
+    
+    // Ensure height is a multiple of 2 (it should be already, but double-check)
+    if (baseHeight % 2 !== 0) {
+      baseHeight = Math.ceil(baseHeight / 2) * 2;
+      // Recalculate width to maintain exact ratio
+      baseWidth = (baseHeight * 5) / 2;
+    }
+    
+    // Final verification - ensure both dimensions are integers
+    baseWidth = Math.round(baseWidth);
+    baseHeight = Math.round(baseHeight);
+    
+    // One last check to ensure exact 5:2 ratio
+    if (baseWidth / baseHeight !== 2.5) {
+      console.warn("Adjusting dimensions for exact 5:2 ratio");
+      // Force exact ratio by using integer multiples
+      const unitHeight = 2;
+      const unitWidth = 5;
+      const units = Math.max(
+        Math.ceil(baseHeight / unitHeight),
+        Math.ceil(baseWidth / unitWidth)
+      );
+      baseWidth = unitWidth * units;
+      baseHeight = unitHeight * units;
+    }
+  }
+  
+  // Set canvas dimensions using our calculated exact values
+  canvas.width = baseWidth;
+  canvas.height = baseHeight;
   
   // Clear canvas with white or transparent background
   if (transparent) {
-    ctx.clearRect(0, 0, newWidth, newHeight);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   } else {
     ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, newWidth, newHeight);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
   
-  // Calculate position to center the image
-  const x = Math.floor((newWidth - origWidth) / 2);
-  const y = Math.floor((newHeight - origHeight) / 2);
+  // Calculate position to center the image exactly
+  const x = Math.floor((canvas.width - origWidth) / 2);
+  const y = Math.floor((canvas.height - origHeight) / 2);
   
   // Draw the image
   ctx.drawImage(img, x, y);
+  
+  // Final verification - log dimensions and ratio for debugging
+  const finalRatio = canvas.width / canvas.height;
+  console.log(`Final dimensions: ${canvas.width}x${canvas.height}, ratio: ${finalRatio.toFixed(10)}`);
+  console.log(`Target ratio: ${aspectRatio}, difference: ${Math.abs(finalRatio - aspectRatio).toFixed(10)}`);
   
   // Return as base64
   return canvas.toDataURL('image/png');
@@ -140,7 +190,7 @@ async function createSquareLogo(img, minSize = 40, transparent = false) {
   const origWidth = img.width;
   const origHeight = img.height;
   
-  // Determine the size of the square
+  // Determine the size of the square - must be exactly square
   let squareSize = Math.max(origWidth, origHeight);
   
   // Ensure minimum size
@@ -148,7 +198,7 @@ async function createSquareLogo(img, minSize = 40, transparent = false) {
     squareSize = minSize;
   }
   
-  // Set canvas dimensions
+  // Set canvas dimensions - must be exactly square
   canvas.width = squareSize;
   canvas.height = squareSize;
   
@@ -160,7 +210,7 @@ async function createSquareLogo(img, minSize = 40, transparent = false) {
     ctx.fillRect(0, 0, squareSize, squareSize);
   }
   
-  // Calculate position to center the image
+  // Calculate position to center the image exactly
   const x = Math.floor((squareSize - origWidth) / 2);
   const y = Math.floor((squareSize - origHeight) / 2);
   
@@ -181,12 +231,16 @@ async function createSquareLogo(img, minSize = 40, transparent = false) {
  * @returns {Promise<string>} - Base64 encoded image
  */
 async function createIcoFromSquare(img, transparent = false) {
+  // Create canvases for each size
+  const sizes = [40, 48, 64];
+  const largestSize = Math.max(...sizes);
+  
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
-  // Set canvas dimensions to 64x64 (common favicon size)
-  canvas.width = 64;
-  canvas.height = 64;
+  // Set canvas dimensions to the largest size
+  canvas.width = largestSize;
+  canvas.height = largestSize;
   
   // Get the original dimensions
   const origWidth = img.width;
@@ -194,20 +248,20 @@ async function createIcoFromSquare(img, transparent = false) {
   
   // Clear canvas with white or transparent background
   if (transparent) {
-    ctx.clearRect(0, 0, 64, 64);
+    ctx.clearRect(0, 0, largestSize, largestSize);
   } else {
     ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillRect(0, 0, largestSize, largestSize);
   }
   
-  // Calculate scaling to fit the image within 64x64
-  const scale = Math.min(64 / origWidth, 64 / origHeight);
+  // Calculate scaling to fit the image within the largest size
+  const scale = Math.min(largestSize / origWidth, largestSize / origHeight);
   const scaledWidth = Math.round(origWidth * scale);
   const scaledHeight = Math.round(origHeight * scale);
   
-  // Calculate position to center the image
-  const x = Math.floor((64 - scaledWidth) / 2);
-  const y = Math.floor((64 - scaledHeight) / 2);
+  // Calculate position to center the image exactly
+  const x = Math.floor((largestSize - scaledWidth) / 2);
+  const y = Math.floor((largestSize - scaledHeight) / 2);
   
   // Draw the image
   ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
