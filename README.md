@@ -9,6 +9,7 @@ A web application for processing images to specific formats and dimensions. This
 - Create rectangular logos with 5:2 aspect ratio (minimum 400x160 pixels)
 - Create square logos with 1:1 aspect ratio (minimum 40x40 pixels)
 - Generate ICO files for favicons (with sizes 40x40, 48x48, 64x64 pixels)
+- Option to use transparent background instead of white
 - Get base64 encoded versions of all processed images
 
 ### Headshot Processor

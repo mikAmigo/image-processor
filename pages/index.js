@@ -12,6 +12,7 @@ export default function Home() {
   // Logo state
   const [logoFile, setLogoFile] = useState(null);
   const [logoResults, setLogoResults] = useState(null);
+  const [transparentBg, setTransparentBg] = useState(false);
   
   // Headshot state
   const [headshotFile, setHeadshotFile] = useState(null);
@@ -54,7 +55,8 @@ export default function Home() {
         minWidth: 400,
         minHeight: 160,
         square: true,
-        ico: true
+        ico: true,
+        transparent: transparentBg
       });
       
       setLogoResults(results);
@@ -173,6 +175,20 @@ export default function Home() {
                 />
               </div>
               
+              <div className="form-group checkbox-group">
+                <label className="checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    checked={transparentBg}
+                    onChange={(e) => setTransparentBg(e.target.checked)}
+                  />
+                  Use transparent background
+                </label>
+                <p className="checkbox-help">
+                  When checked, the background will be transparent instead of white
+                </p>
+              </div>
+              
               <button 
                 type="submit" 
                 className="btn" 
@@ -191,9 +207,11 @@ export default function Home() {
                   src={logoResults.rectangular} 
                   alt="Rectangular Logo" 
                   className="preview-image" 
+                  style={{ background: transparentBg ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #fafafa 0% 50%) 50% / 20px 20px' : 'white' }}
                 />
                 <div className="preview-info">
                   Aspect ratio: 5:2, Min size: 400x160 pixels
+                  {transparentBg && <span>, Transparent background</span>}
                 </div>
                 <div className="preview-actions">
                   <button 
@@ -217,9 +235,11 @@ export default function Home() {
                   src={logoResults.square} 
                   alt="Square Logo" 
                   className="preview-image" 
+                  style={{ background: transparentBg ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #fafafa 0% 50%) 50% / 20px 20px' : 'white' }}
                 />
                 <div className="preview-info">
                   Aspect ratio: 1:1, Min size: 40x40 pixels
+                  {transparentBg && <span>, Transparent background</span>}
                 </div>
                 <div className="preview-actions">
                   <button 
@@ -243,10 +263,15 @@ export default function Home() {
                   src={logoResults.ico} 
                   alt="Favicon" 
                   className="preview-image" 
-                  style={{ maxWidth: '64px', margin: '0 auto' }}
+                  style={{ 
+                    maxWidth: '64px', 
+                    margin: '0 auto',
+                    background: transparentBg ? 'repeating-conic-gradient(#f0f0f0 0% 25%, #fafafa 0% 50%) 50% / 20px 20px' : 'white'
+                  }}
                 />
                 <div className="preview-info">
                   Sizes: 40x40, 48x48, 64x64 pixels
+                  {transparentBg && <span>, Transparent background</span>}
                 </div>
                 <div className="preview-actions">
                   <button 

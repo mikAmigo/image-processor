@@ -12,6 +12,7 @@
  * @param {number} options.minHeight - Minimum height in pixels
  * @param {boolean} options.square - Whether to create a square version
  * @param {boolean} options.ico - Whether to create an ICO version
+ * @param {boolean} options.transparent - Whether to use transparent background
  * @returns {Promise<Object>} - Object containing base64 encoded images
  */
 export async function processLogo(file, options = {}) {
@@ -20,7 +21,8 @@ export async function processLogo(file, options = {}) {
     minWidth = 400,
     minHeight = 160,
     square = true,
-    ico = true
+    ico = true,
+    transparent = false
   } = options;
 
   return new Promise((resolve, reject) => {
@@ -31,13 +33,13 @@ export async function processLogo(file, options = {}) {
         img.onload = async () => {
           try {
             // Process rectangular logo
-            const rectBase64 = await createRectangularLogo(img, aspectRatio, minWidth, minHeight);
+            const rectBase64 = await createRectangularLogo(img, aspectRatio, minWidth, minHeight, transparent);
             
             // Process square logo if requested
-            const squareBase64 = square ? await createSquareLogo(img) : null;
+            const squareBase64 = square ? await createSquareLogo(img, 40, transparent) : null;
             
             // Process ICO if requested
-            const icoBase64 = ico && square ? await createIcoFromSquare(img) : null;
+            const icoBase64 = ico && square ? await createIcoFromSquare(img, transparent) : null;
             
             resolve({
               rectangular: rectBase64,
@@ -66,9 +68,10 @@ export async function processLogo(file, options = {}) {
  * @param {number} aspectRatio - Target aspect ratio (width/height)
  * @param {number} minWidth - Minimum width in pixels
  * @param {number} minHeight - Minimum height in pixels
+ * @param {boolean} transparent - Whether to use transparent background
  * @returns {Promise<string>} - Base64 encoded image
  */
-async function createRectangularLogo(img, aspectRatio, minWidth, minHeight) {
+async function createRectangularLogo(img, aspectRatio, minWidth, minHeight, transparent = false) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
@@ -102,9 +105,13 @@ async function createRectangularLogo(img, aspectRatio, minWidth, minHeight) {
   canvas.width = newWidth;
   canvas.height = newHeight;
   
-  // Fill with white background
-  ctx.fillStyle = 'white';
-  ctx.fillRect(0, 0, newWidth, newHeight);
+  // Clear canvas with white or transparent background
+  if (transparent) {
+    ctx.clearRect(0, 0, newWidth, newHeight);
+  } else {
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, newWidth, newHeight);
+  }
   
   // Calculate position to center the image
   const x = Math.floor((newWidth - origWidth) / 2);
@@ -122,9 +129,10 @@ async function createRectangularLogo(img, aspectRatio, minWidth, minHeight) {
  * 
  * @param {HTMLImageElement} img - The image element
  * @param {number} minSize - Minimum size in pixels
+ * @param {boolean} transparent - Whether to use transparent background
  * @returns {Promise<string>} - Base64 encoded image
  */
-async function createSquareLogo(img, minSize = 40) {
+async function createSquareLogo(img, minSize = 40, transparent = false) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
@@ -144,9 +152,13 @@ async function createSquareLogo(img, minSize = 40) {
   canvas.width = squareSize;
   canvas.height = squareSize;
   
-  // Fill with white background
-  ctx.fillStyle = 'white';
-  ctx.fillRect(0, 0, squareSize, squareSize);
+  // Clear canvas with white or transparent background
+  if (transparent) {
+    ctx.clearRect(0, 0, squareSize, squareSize);
+  } else {
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, squareSize, squareSize);
+  }
   
   // Calculate position to center the image
   const x = Math.floor((squareSize - origWidth) / 2);
@@ -165,9 +177,10 @@ async function createSquareLogo(img, minSize = 40) {
  * We'll just create a PNG that can be used as a favicon
  * 
  * @param {HTMLImageElement} img - The image element
+ * @param {boolean} transparent - Whether to use transparent background
  * @returns {Promise<string>} - Base64 encoded image
  */
-async function createIcoFromSquare(img) {
+async function createIcoFromSquare(img, transparent = false) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
@@ -179,9 +192,13 @@ async function createIcoFromSquare(img) {
   const origWidth = img.width;
   const origHeight = img.height;
   
-  // Fill with white background
-  ctx.fillStyle = 'white';
-  ctx.fillRect(0, 0, 64, 64);
+  // Clear canvas with white or transparent background
+  if (transparent) {
+    ctx.clearRect(0, 0, 64, 64);
+  } else {
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, 64, 64);
+  }
   
   // Calculate scaling to fit the image within 64x64
   const scale = Math.min(64 / origWidth, 64 / origHeight);
