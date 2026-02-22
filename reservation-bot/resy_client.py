@@ -114,6 +114,11 @@ class ResyClient:
             return resp
         return resp  # return last response even if still 500
 
+    @property
+    def is_rate_limited(self) -> bool:
+        """True if the circuit breaker is currently active."""
+        return bool(self._rate_limited_until and time.time() < self._rate_limited_until)
+
     # ------------------------------------------------------------------
     # Auth
     # ------------------------------------------------------------------
