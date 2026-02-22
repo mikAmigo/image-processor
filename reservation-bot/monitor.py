@@ -55,12 +55,18 @@ def _dates_to_check() -> list[date]:
 
 
 def _slot_in_window(time_str: str) -> bool:
-    """Return True if a time string like '17:30' falls in the 5-8 PM window."""
+    """Return True if a time string like '17:30' falls in the 5-8 PM window.
+
+    Accepts both 'HH:MM' and full datetime 'YYYY-MM-DD HH:MM:SS' formats.
+    """
     if not time_str:
         return False
     try:
+        # Handle full datetime strings (e.g. "2026-03-07 17:45:00")
+        if " " in time_str:
+            time_str = time_str.split(" ")[-1]
         hour = int(time_str.split(":")[0])
-        return EARLIEST_HOUR <= hour <= LATEST_HOUR
+        return EARLIEST_HOUR <= hour < LATEST_HOUR
     except (ValueError, IndexError):
         return False
 

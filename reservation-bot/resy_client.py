@@ -13,6 +13,7 @@ Authentication flow:
 from __future__ import annotations
 
 import logging
+import random
 import time
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -53,13 +54,65 @@ class ResyClient:
         self.password = password
         self.auth_token: str | None = None
         self.payment_method_id: int | None = None
+        self._consecutive_500s: int = 0
+        self._rate_limited_until: float = 0
         self.session = requests.Session()
         self.session.headers.update({
             "authorization": f'ResyAPI api_key="{self.api_key}"',
             "x-resy-universal-auth": "",
             "accept": "application/json",
-            "user-agent": "ResyBot/1.0",
+            "origin": "https://resy.com",
+            "referer": "https://resy.com/",
+            "user-agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
         })
+
+    # ------------------------------------------------------------------
+    # Rate-limited requests
+    # ------------------------------------------------------------------
+
+    def _request(self, method: str, url: str, retries: int = 2, **kwargs) -> requests.Response:
+        """Make an API request with rate limiting and retry on 500 (CDN block).
+
+        Resy uses Imperva CDN which returns empty 500s when rate-limited.
+        We use exponential backoff with jitter and a circuit breaker that
+        pauses all requests when we detect sustained rate limiting.
+        """
+        if self._rate_limited_until and time.time() < self._rate_limited_until:
+            wait = self._rate_limited_until - time.time()
+            logger.info("Circuit breaker active, waiting %.0fs…", wait)
+            time.sleep(wait)
+            self._rate_limited_until = 0
+
+        for attempt in range(retries):
+            # Base delay between requests: ~1-2s
+            delay = 1.0 + random.uniform(0, 1.0)
+            if attempt > 0:
+                delay = (2 ** (attempt + 1)) + random.uniform(0, 2.0)
+            time.sleep(delay)
+
+            resp = self.session.request(method, url, **kwargs)
+            if resp.status_code == 500 and not resp.text.strip():
+                # Empty 500 = Imperva CDN rate limit
+                logger.debug("Rate limited (attempt %d/%d), backing off…", attempt + 1, retries)
+                self._consecutive_500s += 1
+                if self._consecutive_500s >= 5:
+                    # Trip circuit breaker: pause for 5 minutes
+                    self._rate_limited_until = time.time() + 300
+                    logger.warning(
+                        "Rate limit circuit breaker tripped after %d consecutive 500s. "
+                        "Pausing requests for 5 minutes.",
+                        self._consecutive_500s,
+                    )
+                    self._consecutive_500s = 0
+                    return resp
+                continue
+            self._consecutive_500s = 0
+            return resp
+        return resp  # return last response even if still 500
 
     # ------------------------------------------------------------------
     # Auth
@@ -71,8 +124,8 @@ class ResyClient:
             logger.warning("No Resy credentials configured – running in read-only mode.")
             return False
 
-        resp = self.session.post(
-            f"{RESY_BASE}/3/auth/password",
+        resp = self._request(
+            "POST", f"{RESY_BASE}/3/auth/password",
             data={"email": self.email, "password": self.password},
         )
         if resp.status_code != 200:
@@ -95,9 +148,14 @@ class ResyClient:
 
     def search_venue(self, query: str, location: str = "new york") -> list[dict]:
         """Search Resy for venues matching *query*."""
-        resp = self.session.get(
-            f"{RESY_BASE}/3/venuesearch/search",
-            params={"query": query, "geo": '{"latitude":40.7128,"longitude":-74.0060}', "per_page": 5},
+        resp = self._request(
+            "POST", f"{RESY_BASE}/3/venuesearch/search",
+            json={
+                "query": query,
+                "geo": {"latitude": 40.7128, "longitude": -74.0060},
+                "per_page": 5,
+                "types": ["venue"],
+            },
         )
         if resp.status_code != 200:
             logger.error("Venue search failed: %s", resp.status_code)
@@ -106,7 +164,7 @@ class ResyClient:
         return [
             {
                 "name": r.get("name", ""),
-                "venue_id": r.get("id", {}).get("resy"),
+                "venue_id": r.get("id", {}).get("resy") if isinstance(r.get("id"), dict) else r.get("id"),
                 "location": r.get("location", {}).get("name", ""),
                 "slug": r.get("url_slug", ""),
             }
@@ -128,8 +186,8 @@ class ResyClient:
         if isinstance(target_date, date):
             target_date = target_date.isoformat()
 
-        resp = self.session.get(
-            f"{RESY_BASE}/4/find",
+        resp = self._request(
+            "GET", f"{RESY_BASE}/4/find",
             params={
                 "lat": 0,
                 "long": 0,
@@ -154,13 +212,19 @@ class ResyClient:
             for raw_slot in venue.get("slots", []):
                 config = raw_slot.get("config", {})
                 dt = raw_slot.get("date", {})
+                # API returns full datetime strings like "2026-03-07 17:45:00"
+                # Extract just the time portion (HH:MM) for filtering
+                start_raw = dt.get("start", "")
+                end_raw = dt.get("end", "")
+                time_start = _extract_time(start_raw)
+                time_end = _extract_time(end_raw)
                 slots.append(
                     Slot(
                         venue_name=venue_name or str(venue_id),
                         venue_id=str(venue_id),
                         date=target_date,
-                        time_start=dt.get("start", ""),
-                        time_end=dt.get("end", ""),
+                        time_start=time_start,
+                        time_end=time_end,
                         party_size=party_size,
                         slot_type=config.get("type", ""),
                         config_token=config.get("token", ""),
@@ -178,8 +242,8 @@ class ResyClient:
 
     def get_booking_details(self, config_token: str, party_size: int, target_date: str) -> dict | None:
         """Step 1 of the booking flow – get the booking token."""
-        resp = self.session.get(
-            f"{RESY_BASE}/3/details",
+        resp = self._request(
+            "GET", f"{RESY_BASE}/3/details",
             params={
                 "config_id": config_token,
                 "day": target_date,
@@ -215,8 +279,8 @@ class ResyClient:
             return None
 
         payment_id = self.payment_method_id or 0
-        resp = self.session.post(
-            f"{RESY_BASE}/3/book",
+        resp = self._request(
+            "POST", f"{RESY_BASE}/3/book",
             data={
                 "book_token": book_token,
                 "struct_payment_method": f'{{"id":{payment_id}}}',
@@ -236,6 +300,18 @@ class ResyClient:
 # ------------------------------------------------------------------
 # helpers
 # ------------------------------------------------------------------
+
+def _extract_time(raw: str) -> str:
+    """Extract HH:MM from a datetime string like '2026-03-07 17:45:00' or '17:45'."""
+    if not raw:
+        return ""
+    # If it contains a space, it's a full datetime string
+    if " " in raw:
+        time_part = raw.split(" ")[-1]  # "17:45:00"
+        return ":".join(time_part.split(":")[:2])  # "17:45"
+    # Already in HH:MM or HH:MM:SS format
+    return ":".join(raw.split(":")[:2])
+
 
 def _extract_payment_id(auth_payload: dict) -> int | None:
     """Try to pull a payment method ID from the auth response."""

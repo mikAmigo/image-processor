@@ -3,7 +3,7 @@ Configuration for the restaurant reservation bot.
 """
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 # ---------------------------------------------------------------------------
@@ -30,7 +30,7 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 # ---------------------------------------------------------------------------
 # Bot behaviour
 # ---------------------------------------------------------------------------
-POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "30"))
+POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "120"))
 MIN_NOTICE_HOURS = 36  # must be at least 36 h from now
 PARTY_SIZE = int(os.getenv("PARTY_SIZE", "2"))
 AUTO_BOOK = os.getenv("AUTO_BOOK", "false").lower() == "true"
@@ -80,8 +80,9 @@ RESTAURANTS: list[Restaurant] = [
         name="The Corner Store",
         platform=Platform.RESY,
         slug="the-corner-store",
-        venue_id="72309",
-        notes="Brooklyn brunch/dinner spot.",
+        venue_id="",
+        enabled=False,
+        notes="Not found on Resy search. May have closed or changed name. Re-enable once venue ID is confirmed.",
     ),
     Restaurant(
         name="bōm",
@@ -96,55 +97,55 @@ RESTAURANTS: list[Restaurant] = [
         slug="the-box-nyc",
         venue_id="",
         enabled=False,
-        notes="Nightlife venue – may not use standard reservations. Disabled by default.",
+        notes="Nightlife venue – not on Resy. Disabled.",
     ),
     Restaurant(
-        name="Clemente Bar",
+        name="Clemente Bar and Studio",
         platform=Platform.RESY,
         slug="clemente-bar",
-        venue_id="",
-        notes="Need to look up venue ID.",
+        venue_id="84216",
+        notes="Flatiron. ICHIMURAxSTUDIO experience.",
     ),
     Restaurant(
         name="Bemelmans Bar",
         platform=Platform.RESY,
         slug="bemelmans-bar",
-        venue_id="",
-        notes="The Carlyle hotel. May use hotel booking system.",
+        venue_id="85500",
+        notes="The Carlyle hotel, Upper East Side.",
     ),
     Restaurant(
         name="Monkey Bar",
         platform=Platform.RESY,
-        slug="monkey-bar",
-        venue_id="",
-        notes="Midtown classic.",
+        slug="monkey-bar-nyc",
+        venue_id="60058",
+        notes="Midtown East classic.",
     ),
     Restaurant(
-        name="Tatiana",
+        name="TATIANA, By Kwame Onwuachi",
         platform=Platform.RESY,
         slug="tatiana",
-        venue_id="62754",
+        venue_id="65452",
         notes="Lincoln Center. Very competitive.",
     ),
     Restaurant(
         name="Theodora",
         platform=Platform.RESY,
         slug="theodora",
-        venue_id="",
-        notes="Greek restaurant.",
+        venue_id="73589",
+        notes="Greek restaurant, Fort Greene.",
     ),
     Restaurant(
         name="Semma",
         platform=Platform.RESY,
         slug="semma",
-        venue_id="57632",
-        notes="South Indian. Michelin star.",
+        venue_id="1263",
+        notes="South Indian, West Village. Michelin star.",
     ),
     Restaurant(
-        name="Adda",
+        name="ADDA",
         platform=Platform.RESY,
-        slug="adda-indian-canteen",
-        venue_id="1505",
-        notes="Indian canteen in LIC.",
+        slug="ADDA",
+        venue_id="89018",
+        notes="Indian, East Village.",
     ),
 ]
