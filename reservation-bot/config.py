@@ -80,9 +80,8 @@ RESTAURANTS: list[Restaurant] = [
         name="The Corner Store",
         platform=Platform.RESY,
         slug="the-corner-store",
-        venue_id="",
-        enabled=False,
-        notes="Not found on Resy search. May have closed or changed name. Re-enable once venue ID is confirmed.",
+        venue_id="83517",
+        notes="SoHo, 475 W Broadway. Very competitive (Taylor Swift effect).",
     ),
     Restaurant(
         name="bōm",
@@ -97,7 +96,7 @@ RESTAURANTS: list[Restaurant] = [
         slug="the-box-nyc",
         venue_id="",
         enabled=False,
-        notes="Nightlife venue – not on Resy. Disabled.",
+        notes="Nightclub with own booking system (table minimums $1,200+). Not on Resy or OpenTable.",
     ),
     Restaurant(
         name="Clemente Bar and Studio",
