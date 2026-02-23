@@ -5,9 +5,10 @@ Resy's public-facing API lives at https://api.resy.com.  An API key is
 embedded in their web app; you can grab one from browser dev-tools (look for
 the `authorization` header with value `ResyAPI api_key="…"`).
 
-Authentication flow:
-  1. POST /3/auth/password  → returns an auth token
-  2. All subsequent calls include both the API key and the auth token.
+Authentication flow (pick one):
+  A. Set RESY_AUTH_TOKEN directly (grab it from browser dev-tools).
+  B. POST /3/auth/password with email + password → returns an auth token.
+  All subsequent calls include both the API key and the auth token.
 """
 
 from __future__ import annotations
@@ -48,18 +49,18 @@ class Slot:
 class ResyClient:
     """Thin wrapper around the Resy REST API."""
 
-    def __init__(self, api_key: str, email: str = "", password: str = ""):
+    def __init__(self, api_key: str, email: str = "", password: str = "", auth_token: str = ""):
         self.api_key = api_key
         self.email = email
         self.password = password
-        self.auth_token: str | None = None
+        self.auth_token: str | None = auth_token or None
         self.payment_method_id: int | None = None
         self._consecutive_500s: int = 0
         self._rate_limited_until: float = 0
         self.session = requests.Session()
         self.session.headers.update({
             "authorization": f'ResyAPI api_key="{self.api_key}"',
-            "x-resy-universal-auth": "",
+            "x-resy-universal-auth": self.auth_token or "",
             "accept": "application/json",
             "origin": "https://resy.com",
             "referer": "https://resy.com/",
@@ -69,6 +70,8 @@ class ResyClient:
                 "Chrome/120.0.0.0 Safari/537.36"
             ),
         })
+        if self.auth_token:
+            logger.info("Using pre-configured Resy auth token.")
 
     # ------------------------------------------------------------------
     # Rate-limited requests

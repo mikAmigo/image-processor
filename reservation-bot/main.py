@@ -29,6 +29,7 @@ except ImportError:
 from config import (
     PARTY_SIZE,
     RESY_API_KEY,
+    RESY_AUTH_TOKEN,
     RESY_EMAIL,
     RESY_PASSWORD,
     OPENTABLE_API_KEY,
@@ -52,8 +53,9 @@ def build_clients() -> tuple[ResyClient, OpenTableClient]:
         api_key=RESY_API_KEY,
         email=RESY_EMAIL,
         password=RESY_PASSWORD,
+        auth_token=RESY_AUTH_TOKEN,
     )
-    if RESY_EMAIL and RESY_PASSWORD:
+    if not RESY_AUTH_TOKEN and RESY_EMAIL and RESY_PASSWORD:
         resy.authenticate()
 
     ot = OpenTableClient(api_key=OPENTABLE_API_KEY)

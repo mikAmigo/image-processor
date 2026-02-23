@@ -10,6 +10,7 @@ from enum import Enum
 # Resy / OpenTable credentials – sourced from environment
 # ---------------------------------------------------------------------------
 RESY_API_KEY = os.getenv("RESY_API_KEY", "")
+RESY_AUTH_TOKEN = os.getenv("RESY_AUTH_TOKEN", "")
 RESY_EMAIL = os.getenv("RESY_EMAIL", "")
 RESY_PASSWORD = os.getenv("RESY_PASSWORD", "")
 
